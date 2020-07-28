@@ -1,26 +1,35 @@
 import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import CurrencySelector from './containers/currencySelector';
+import CurrencyCalculator from './containers/currencyCalculator';
+import HistoricalRates from './containers/historicalRates';
+import styled from 'styled-components';
+import './App.scss';
 
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <Container>
+        <h1>Currency Converter</h1>
+        <CurrencySelector/>
+        <CurrencyCalculator/>
+        <HistoricalRates/>
+      </Container>
     </div>
   );
 }
 
 export default App;
+
+const Container = styled.main`
+  display: block;
+  width: 650px;
+  margin: auto;
+  padding: 0;
+  text-align: center;
+  h1 {
+    margin-top: 50px;
+    font-family: 'Helvetica Neue';
+    font-weight: 300;
+    letter-spacing: 1.2px;
+  }
+`
