@@ -55,7 +55,6 @@ function Select() {
     }
 
     console.log(Object.entries(JSON.parse(data)))
-    console.log(Object.entries(JSON.parse(data)))
 
     return (
 
