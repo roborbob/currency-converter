@@ -1,16 +1,16 @@
 import React, {useState, useEffect} from 'react';
 import styled from 'styled-components';
+import ListItem from './dropDownContainer';
 import axios from 'axios';
 import {MdSwapHoriz, MdExpandMore} from 'react-icons/md';
 import ReactCountryFlag from 'react-country-flag';
 import {config} from '../config';
 
-function Select() {
-    const initialRates = () => localStorage.getItem('rates') || {};
-    const [toggleOne, setToggleOne] = useState(false);
-    const [toggleTwo, setToggleTwo] = useState(false);
-    const [data, setData] = useState(initialRates)
+function Select(props) {
+    const [toggle, setToggle] = useState({toggleSelling: false, toggleBuying: false});
+    const [rate, setRate] = useState(props.initialRate)
     const [left, setLeft] = useState(`1.00`)
+    const [right, setRight] = useState((Number(left)*rate).toFixed(2))
     const [selling, setSelling] = useState({
             flag: `GB`,
             currencyCode: `GBP`,
@@ -21,21 +21,6 @@ function Select() {
             currencyCode: `EUR`,
             currency: `Euro`,
     }) 
- 
-    useEffect(() => {
-        if(Object.keys(data).length !== 0){
-            console.log('Using local storage')
-        } else {
-            console.log('calling api')
-            const fetchData = async () => {
-                const result = await axios(
-                    'https://api.exchangeratesapi.io/latest?base=GBP'
-                )
-                localStorage.setItem('rates',JSON.stringify(result.data.rates))
-            } 
-            fetchData();
-        }
-    }, []);
 
     const sellingHandler = (key) => {
         setSelling({
@@ -43,7 +28,8 @@ function Select() {
             currencyCode: key,
             currency: config[key].name
         })
-        setToggleOne(false)
+        updateRate(key,buying.currencyCode)
+        setToggle(prevToggle => ({toggleSelling: false, toggleBuying: prevToggle.toggleBuying}))
     }
     const buyingHandler = (key) => {
         setBuying({
@@ -51,10 +37,26 @@ function Select() {
             currencyCode: key,
             currency: config[key].name
         })
-        setToggleTwo(false)
+        updateRate(selling.currencyCode,key)
+        setToggle(prevToggle => ({toggleSelling: prevToggle.toggleSelling, toggleBuying: false}))
     }
 
-    console.log(Object.entries(JSON.parse(data)))
+    const swapHandler = () => {
+        setBuying(selling)
+        setSelling(buying)
+        updateRate(selling.currencyCode,buying.currencyCode)     
+    }
+
+    const updateRate = (a,b) => {
+        const fetchData = async () => {
+            const result = await axios(
+                `https://api.exchangeratesapi.io/latest?base=${a}&symbols=${b}`
+            )
+            setRate(Object.values(result.data.rates)[0])
+        } 
+        fetchData();
+        setRight((left*rate).toFixed(2))
+    }
 
     return (
 
@@ -65,54 +67,62 @@ function Select() {
                     <p>{selling.currencyCode}</p>
                     <p>{selling.currency}</p>
                 </div>
-                <MdExpandMore style={{transform: toggleOne ? `rotate(180deg)` : `rotate(0deg)`}} onClick={() => setToggleOne(!toggleOne)}/>
-                <DropdownContainer style={{height: toggleOne ? `240px`: `0px`}}>
-                    {Object.entries(JSON.parse(data)).sort().map(([key,val]) =>  
-                        <ListItem onClick={() => sellingHandler(key)}>
-                            <ReactCountryFlag style={flagStyle} svg countryCode={key.slice(0,2)}/>
-                            <div className='currency-tags'>
-                                <p>{key}</p>
-                                <p>{config[key].name}</p>
-                            </div>
-                        </ListItem>
-                    )} 
-                </DropdownContainer>
+                <MdExpandMore 
+                    style={{transform: toggle.toggleSelling ? `rotate(180deg)` : `rotate(0deg)`}} 
+                    onClick={() => setToggle(prevToggle => ({toggleSelling: !prevToggle.toggleSelling, toggleBuying: prevToggle.toggleBuying}))}/>
+                 <DropDownContainer toggle={toggle.toggleSelling}>
+                     {props.rateData.map( e => (
+                         <ListItem 
+                            key={Math.random()}
+                            clicked={() => sellingHandler(e)}
+                            code={e}
+                         />
+                     ))}
+                </DropDownContainer>                
             </SelectContainer>
-            <MdSwapHoriz style={flagStyle}/>
+            <MdSwapHoriz style={flagStyle} onClick={swapHandler}/>
             <SelectContainer>
                 <ReactCountryFlag style={flagStyle} svg countryCode={buying.flag}/>
                 <div className='currency-tags'>
                     <p>{buying.currencyCode}</p>
                     <p>{buying.currency}</p>
                 </div>
-                <MdExpandMore style={{transform: toggleTwo ? `rotate(180deg)` : `rotate(0deg)`}} onClick={() => setToggleTwo(!toggleTwo)}/>
-                <DropdownContainer style={{height: toggleTwo ? `240px`: `0px`}}>
-                    {Object.entries(JSON.parse(data)).sort().map(([key,val]) =>  
-                        <ListItem onClick={() => buyingHandler(key)}>
-                            <ReactCountryFlag style={flagStyle} svg countryCode={key.slice(0,2)}/>
-                            <div className='currency-tags'>
-                                <p>{key}</p>
-                                <p>{config[key].name}</p>
-                            </div>
-                        </ListItem>
-                    )} 
-                </DropdownContainer>
+                <MdExpandMore 
+                    style={{transform: toggle.toggleBuying ? `rotate(180deg)` : `rotate(0deg)`}} 
+                    onClick={() => setToggle(prevToggle => ({toggleSelling: prevToggle.toggleSelling, toggleBuying:!prevToggle.toggleBuying}))}/>
+                <DropDownContainer toggle={toggle.toggleBuying}>
+                    {props.rateData.map( e => (
+                        <ListItem 
+                            key={Math.random()}
+                            clicked={() => buyingHandler(e)}
+                            code={e}
+                        />
+                    ))}
+                </DropDownContainer>
             </SelectContainer>
-            <InputContainer type="text" defaultValue={left} onChange={(e) => setLeft(e.target.value)}/>
+            <InputContainer focus type="text" value={left} onChange={(e) => {
+                setRight(((e.target.value)*rate).toFixed(2))
+                setLeft(e.target.value)
+                }
+            }/>
             <MdSwapHoriz style={flagStyle}/>
-            <InputContainer type="text"/>
+            <InputContainer type="text" value={right} onChange={(e) => {
+                setLeft(((e.target.value)/rate).toFixed(2))
+                setRight(e.target.value)
+                }
+            }/>
         </SelectWrapper>
     )
 }
 
-const flagStyle = {
-    width: `50px`,
-    height: `100%`,
-}
 
 const pointerStyle = {
     width: `30px`,
     height: `30px`
+}
+const flagStyle = {
+    width: `50px`,
+    height: `100%`,
 }
 
 const SelectWrapper = styled.div`
@@ -164,30 +174,7 @@ const SelectContainer = styled.div`
         }
     }
 `
-const InputContainer = styled.input`
-    width: 270px;
-    height: 60px;
-    border-radius: 5px;
-    border: none;
-    background: white;
-    padding: 10px;
-    margin-top: 10px;
-    font-size: 20px;
-    font-weight: bold;
-    font-family: Helvetica Neue;
-`
-const ListItem = styled(SelectContainer)`
-    position: relative;
-    border-top: 1px solid silver;
-    border-radius: 0px;
-    transition: 0.3s;
-    background: rgba(255,255,255,0.7);
-    &:hover{
-        background: lightblue;
-        cursor: pointer;
-    }
-`
-const DropdownContainer = styled.div`
+const DropDownContainer = styled.div`
     position: absolute;
     top: 60px;
     left: 0;
@@ -197,5 +184,18 @@ const DropdownContainer = styled.div`
     background: none;
     border-radius: 5px;
     transition: 0.2s;
+    height: ${props => props.toggle ? `240px` : `0px` }
+`
+const InputContainer = styled.input`
+    width: 270px;
+    height: 60px;
+    border-radius: 5px;
+    border: none;
+    background: white;
+    padding: 10px;
+    margin-top: 10px;
+    font-size: 20px;
+    font-weight: regular;
+    font-family: 'Helvetica Neue';
 `
 export default Select;
